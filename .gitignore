@@ -1,0 +1,31 @@
+# Ignore TextMate project files
+*.tmproj
+
+# Ignore Mac OS metadata files
+.DS_Store
+
+# Ignore Mac OS X extended file attribute files
+._*
+._*/
+
+# Ignore Vim .swp files and temp backups
+*.swp
+*~
+
+# Emacs tags files
+TAGS
+*.tags
+
+# Logs
+logs
+*.log
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons (http://nodejs.org/api/addons.html)
+build/Release
+
+# node modules
+node_modules
+

@@ -1,0 +1,11 @@
+{
+  "name": "http-load-tester",
+  "version": "1.0.0",
+  "description": "Load test HTTP servers",
+  "author": "Oddnetworks Inc.",
+  "dependencies": {
+    "request": "~2.69.0",
+    "yargs": "~4.3.0"
+  },
+  "license": "MIT"
+}
