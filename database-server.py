@@ -3,16 +3,16 @@ import random
 from time import sleep
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
-PORT = 8888
+PORT = int(os.getenv('PORT', 8888))
 
 # Be default, the normal min latency will be 100ms.
-MIN = os.getenv('MIN', 100)
+MIN = int(os.getenv('MIN', 100))
 
 # By default, the normal max latency will be 300ms.
-MAX = os.getenv('MAX', 300)
+MAX = int(os.getenv('MAX', 300))
 
 # By default, 1 of every 20 requests will be an outlier.
-OUTLIER = os.getenv('OUTLIER', 20)
+OUTLIER = int(os.getenv('OUTLIER', 20))
 
 class Handler(BaseHTTPRequestHandler):
 
@@ -33,4 +33,7 @@ class Handler(BaseHTTPRequestHandler):
 httpd = HTTPServer(("", PORT), Handler)
 
 print "serving at port", PORT
+print "MIN", MIN
+print "MAX", MAX
+print "OUTLIER", OUTLIER
 httpd.serve_forever()
