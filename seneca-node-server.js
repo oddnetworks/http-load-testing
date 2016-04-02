@@ -1,22 +1,42 @@
+var http = require('http');
+var debug = require('debug')('vanilla-node-server');
+var seneca = require('seneca')();
+var lib = require('./lib/');
 
-module.exports = function senecaPlugin(app) {
-	var seneca = require('seneca');
+var PORT = parseInt(process.env.PORT, 10) || 8080;
 
-	seneca.add({role: 'db', cmd: 'fetchOne'}, function (msg, next) {
-		app.store.fetch(function () {
-			next(1);
+seneca.add({cmd: 'fetchFromDatastore'}, function (args, next) {
+	lib.fetchFromDatastore(next);
+});
+
+seneca.add({cmd: 'expensiveComputation'}, function (args, next) {
+	lib.expensiveComputation(next);
+});
+
+seneca.add({cmd: 'cheapComputation'}, function (args, next) {
+	lib.cheapComputation(next);
+});
+
+var server = http.createServer(function handleRequest(req, res) {
+	debug('request START');
+
+	seneca.act({cmd: 'fetchFromDatastore'}, function (err) {
+		lib.maybePrintError(err);
+
+		seneca.act({cmd: 'expensiveComputation'}, function (err) {
+			lib.maybePrintError(err);
+
+			seneca.act({cmd: 'cheapComputation'}, function (err) {
+				lib.maybePrintError(err);
+
+				debug('request END');
+				lib.openFileStream(lib.respond(req, res));
+			});
 		});
 	});
+});
 
-	seneca.add({role: 'db', cmd: 'fetchTwo'}, function (msg, next) {
-		var count = 0;
-		while (count < 5000000000) {
-			count += 1;
-		}
-		next(2);
-	});
-
-	seneca.add({role: 'db', cmd: 'fetchThree'}, function (msg, next) {
-		next(3);
-	});
-};
+server.listen(PORT, function () {
+	var addr = server.address();
+	debug('server running on %s:%d', addr.address, addr.port);
+});

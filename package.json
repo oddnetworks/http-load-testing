@@ -6,9 +6,15 @@
   "scripts": {
     "lint": "xo"
   },
+  "repository": {
+    "type" : "git",
+    "url"  : "https://github.com/oddnetworks/http-load-tester.git"
+  },
+  "homepage": "https://github.com/oddnetworks/http-load-tester/",
   "dependencies": {
     "debug": "~2.2.0",
     "filepath": "~1.1.0",
+    "seneca": "~2.0.0",
     "request": "~2.69.0",
     "yargs": "~4.3.0"
   },
