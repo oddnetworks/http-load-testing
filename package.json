@@ -3,9 +3,17 @@
   "version": "1.0.0",
   "description": "Load test HTTP servers",
   "author": "Oddnetworks Inc.",
+  "scripts": {
+    "lint": "xo"
+  },
   "dependencies": {
+    "debug": "~2.2.0",
+    "filepath": "~1.1.0",
     "request": "~2.69.0",
     "yargs": "~4.3.0"
+  },
+  "devDependencies": {
+    "xo": "~0.13.0"
   },
   "license": "MIT"
 }
