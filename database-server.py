@@ -22,7 +22,7 @@ class Handler(BaseHTTPRequestHandler):
 		else:
 			latency = random.randint(MIN, MAX)
 
-		print 'latency - %s', latency
+		print 'latency - ', latency
 		sleep(latency / 1000.0)
 		self.send_response(200)
 		self.send_header('Content-type','application/json')
