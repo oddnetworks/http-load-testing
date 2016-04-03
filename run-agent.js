@@ -93,6 +93,7 @@ exports.run = function (options) {
 		});
 
 		agent.on('response', function (res) {
+			res.pending = (numRequests - data.length) - 1;
 			data.push(res);
 			process.stderr.write('.');
 			done();
@@ -146,7 +147,7 @@ exports.printData = function (results) {
 
 	console.log('original,sorted');
 	sorted.forEach(function (item, i) {
-		console.log('%s,%s', original[i].latency, item.latency);
+		console.log('%s,%s,%s', original[i].latency, item.latency, item.pending);
 	});
 
 	console.error('errors: ', errors.map(function (res) {
