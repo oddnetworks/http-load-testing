@@ -1,7 +1,7 @@
 import os
 import random
 import urllib2
-from time import sleep
+import time
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 PORT = int(os.getenv('PORT', 8080))
@@ -11,14 +11,10 @@ DATA_FILEPATH = os.getenv('DATA_FILEPATH')
 class Handler(BaseHTTPRequestHandler):
 
 	def do_GET(self):
-		urllib2.urlopen(DATABASE_URL)
-
-		sleep(0.01)
-
-		count = 0
-		while count < 10000000:
-			count = count + 1
-
+		if DATABASE_URL:
+			dbstart = time.time()
+			urllib2.urlopen(DATABASE_URL)
+			print 'db access time %.3f seconds' % (time.time() - dbstart)
 
 		self.send_response(200)
 		self.send_header('Content-type','text/plain')
