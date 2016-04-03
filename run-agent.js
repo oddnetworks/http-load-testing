@@ -114,9 +114,11 @@ exports.main = function (args, done) {
 	});
 
 	process.on('beforeExit', function () {
+		process.stderr.write('\n');
 		done(null, data);
 	});
 
+	process.stderr.write('\n');
 	runner.run();
 };
 
@@ -133,6 +135,7 @@ exports.printData = function (results) {
 		return sum + res.latency;
 	}, 0);
 
+	console.log('');
 	console.log('pending,original,sorted');
 	sorted.forEach(function (item, i) {
 		console.log('%s,%s,%s', item.pending, original[i].latency, item.latency);
@@ -145,7 +148,9 @@ exports.printData = function (results) {
 };
 
 if (require.main === module) {
+	var startTime = new Date().getTime();
 	exports.main(options.argv, function (err, data) {
+		console.error('Runtime: %d seconds', (new Date().getTime() - startTime) / 1000);
 		if (err) {
 			console.error('The user agent has suffered an error:');
 			console.error(err.stack || err.message || err);
