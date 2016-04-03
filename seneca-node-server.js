@@ -1,5 +1,7 @@
 var http = require('http');
-var debug = require('debug')('vanilla-node-server');
+var debug = require('debug');
+var logInfo = debug('seneca-node-server');
+var logReq = debug('request');
 var seneca = require('seneca')();
 var lib = require('./lib/');
 
@@ -9,34 +11,28 @@ seneca.add({cmd: 'fetchFromDatastore'}, function (args, next) {
 	lib.fetchFromDatastore(next);
 });
 
-seneca.add({cmd: 'expensiveComputation'}, function (args, next) {
-	lib.expensiveComputation(next);
-});
+seneca.add({cmd: 'respond'}, function (args, next) {
+	args.res.on('finish', function () {
+		next();
+	});
 
-seneca.add({cmd: 'cheapComputation'}, function (args, next) {
-	lib.cheapComputation(next);
+	lib.openFileStream(lib.respond(args.req, args.res));
 });
 
 var server = http.createServer(function handleRequest(req, res) {
-	debug('request START');
+	var start = new Date().getTime();
+	logReq('START');
 
 	seneca.act({cmd: 'fetchFromDatastore'}, function (err) {
 		lib.maybePrintError(err);
-
-		seneca.act({cmd: 'expensiveComputation'}, function (err) {
+		seneca.act({cmd: 'respond', req: res, res: res}, function (err) {
 			lib.maybePrintError(err);
-
-			seneca.act({cmd: 'cheapComputation'}, function (err) {
-				lib.maybePrintError(err);
-
-				debug('request END');
-				lib.openFileStream(lib.respond(req, res));
-			});
+			logReq('END %d ms', new Date().getTime() - start);
 		});
 	});
 });
 
 server.listen(PORT, function () {
 	var addr = server.address();
-	debug('server running on %s:%d', addr.address, addr.port);
+	logInfo('server running on %s:%d', addr.address, addr.port);
 });
