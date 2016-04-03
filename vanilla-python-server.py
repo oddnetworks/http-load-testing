@@ -11,15 +11,16 @@ DATA_FILEPATH = os.getenv('DATA_FILEPATH')
 class Handler(BaseHTTPRequestHandler):
 
 	def do_GET(self):
-		if DATABASE_URL:
-			dbstart = time.time()
-			urllib2.urlopen(DATABASE_URL)
-			print 'db access time %.3f seconds' % (time.time() - dbstart)
+		request_start = time.time()
+		dbstart = time.time()
+		urllib2.urlopen(DATABASE_URL)
+		print 'db access time %.3f seconds' % (time.time() - dbstart)
 
 		self.send_response(200)
 		self.send_header('Content-type','text/plain')
 		self.end_headers()
 		self.wfile.write(open(DATA_FILEPATH).read())
+		print 'request time %.3f seconds' % (time.time() - request_start)
 		return
 
 httpd = HTTPServer(("", PORT), Handler)
