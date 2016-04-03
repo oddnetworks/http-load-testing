@@ -31,7 +31,7 @@ exports.createUserAgent = function (options) {
 		agent.emit('request');
 
 		var start = new Date().getTime();
-		request(options, function onResponse(err, res) {
+		return request(options, function onResponse(err, res) {
 			if (err) {
 				agent.emit('error', err);
 			} else {
@@ -46,86 +46,78 @@ exports.createUserAgent = function (options) {
 	return agent;
 };
 
-exports.throttle = function (options, done) {
-	var agent = options.agent;
-
-	// Request frequency is given in requests per minute.
-	var interval = Math.round(60000 / options.frequency);
-
-	// length is given in seconds
-	var endTime = new Date().getTime() + (options.length * 1000);
-
-	function makeRequest() {
-		var now = new Date().getTime();
-		if (now >= endTime) {
-			return done();
-		}
-		agent.request();
-		setTimeout(makeRequest, interval);
-	}
-
-	return makeRequest;
-};
-
-exports.run = function (options) {
+// options.url - The URL String to make requests to
+// options.frequency - Number of requests per minute
+// options.length - Length of time to run in Number of seconds
+exports.createRunner = function (options) {
 	var url = options.url;
 	var frequency = options.frequency;
 	var length = options.length;
 
-	return new Promise(function (resolve, reject) {
-		var data = [];
-		var numRequests = 0;
-		var allRequestsSent = false;
-
-		var agent = exports.createUserAgent({
-			method: 'GET',
-			url: url,
-			headers: {
-				'Accept': '*/*',
-				'User-Agent': 'Roku/DVP-7.0 (047.00E09044A)'
-			}
-		});
-
-		agent.on('error', reject);
-
-		agent.on('request', function () {
-			numRequests += 1;
-		});
-
-		agent.on('response', function (res) {
-			res.pending = (numRequests - data.length) - 1;
-			data.push(res);
-			process.stderr.write('.');
-			done();
-		});
-
-		process.stderr.write('\n');
-		var throttle = exports.throttle({
-			agent: agent,
-			frequency: frequency,
-			length: length
-		}, function () {
-			allRequestsSent = true;
-			done();
-		});
-
-		function done() {
-			if (allRequestsSent && numRequests === data.length) {
-				process.stderr.write('\n');
-				resolve(data);
-			}
+	var agent = exports.createUserAgent({
+		method: 'GET',
+		url: url,
+		headers: {
+			'Accept': '*/*',
+			'User-Agent': 'Roku/DVP-7.0 (047.00E09044A)'
 		}
-
-		throttle();
 	});
+
+	// Request frequency is given in requests per minute.
+	var interval = Math.round(60000 / frequency);
+
+	// length is given in seconds
+	var endTime = new Date().getTime() + (length * 1000);
+
+	function makeRequest() {
+		if (new Date().getTime() < endTime) {
+			agent.request();
+			setTimeout(makeRequest, interval);
+		}
+	}
+
+	return {
+		agent: agent,
+
+		run: function () {
+			makeRequest();
+			return this;
+		}
+	};
 };
 
-exports.main = function (args) {
-	return exports.run({
+exports.main = function (args, done) {
+	var data = [];
+	var requestCount = 0;
+
+	var runner = exports.createRunner({
 		url: args.url,
 		frequency: args.frequency,
 		length: args.length
 	});
+
+	var agent = runner.agent;
+
+	agent.on('error', function (err) {
+		process.stderr.write('\n');
+		console.error('Agent Error: %s', err.message || err);
+	});
+
+	agent.on('request', function () {
+		requestCount += 1;
+	});
+
+	agent.on('response', function (res) {
+		res.pending = (requestCount - data.length) - 1;
+		data.push(Object.freeze(res));
+		process.stderr.write(res.pending + '.');
+	});
+
+	process.on('beforeExit', function () {
+		done(null, data);
+	});
+
+	runner.run();
 };
 
 exports.printData = function (results) {
@@ -141,18 +133,11 @@ exports.printData = function (results) {
 		return sum + res.latency;
 	}, 0);
 
-	var errors = original.filter(function (res) {
-		return res.status < 200 || res.status > 299;
-	});
-
-	console.log('original,sorted');
+	console.log('pending,original,sorted');
 	sorted.forEach(function (item, i) {
-		console.log('%s,%s,%s', original[i].latency, item.latency, item.pending);
+		console.log('%s,%s,%s', item.pending, original[i].latency, item.latency);
 	});
 
-	console.error('errors: ', errors.map(function (res) {
-		return res.status;
-	}));
 	console.error('requests: ', original.length);
 	console.error('min: ', sorted[0].latency);
 	console.error('max: ', sorted[sorted.length - 1].latency);
@@ -160,11 +145,12 @@ exports.printData = function (results) {
 };
 
 if (require.main === module) {
-	exports.main(options.argv)
-		.then(exports.printData)
-		.catch(function (err) {
+	exports.main(options.argv, function (err, data) {
+		if (err) {
 			console.error('The user agent has suffered an error:');
 			console.error(err.stack || err.message || err);
-			process.exit(1);
-		});
+		} else {
+			exports.printData(data);
+		}
+	});
 }
