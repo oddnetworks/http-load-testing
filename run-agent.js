@@ -4,12 +4,17 @@ var yargs = require('yargs');
 var request = require('request');
 
 var options = yargs
-	.usage('Usage: $0 --url <str> --frequency <num> --length <num>')
+	.usage('Usage: $0 --url <str> --timeout [number] --frequency <num> --length <num>')
 	.option('url', {
 		describe: 'The URL to test',
 		alias: 'u',
 		demand: true,
 		type: 'string'
+	})
+	.option('timeout', {
+		describe: 'Request timeout in seconds',
+		alias: 't',
+		type: 'number'
 	})
 	.option('frequency', {
 		describe: 'Request frequency in requests p/minute',
@@ -32,12 +37,33 @@ exports.createUserAgent = function (options) {
 
 		var start = new Date().getTime();
 		return request(options, function onResponse(err, res) {
+			var latency = new Date().getTime() - start;
+
 			if (err) {
-				agent.emit('error', err);
+				switch (err.code) {
+					// We know how to handle these two error types, and should treat
+					// them as a failed response.
+					case 'ECONNRESET':
+					case 'ETIMEDOUT':
+						agent.emit('response', Object.freeze({
+							status: 0,
+							latency: latency,
+							error: Object.freeze({
+								code: err.code,
+								connect: Boolean(err.connect)
+							})
+						}));
+						break;
+
+					// We emit all other errors and don't treat them like a response.
+					default:
+						agent.emit('error', err);
+				}
 			} else {
 				agent.emit('response', {
 					status: res.statusCode,
-					latency: new Date().getTime() - start
+					latency: latency,
+					error: null
 				});
 			}
 		});
@@ -47,12 +73,14 @@ exports.createUserAgent = function (options) {
 };
 
 // options.url - The URL String to make requests to
+// options.timeout - The request timeout limit in seconds
 // options.frequency - Number of requests per minute
 // options.length - Length of time to run in Number of seconds
 exports.createRunner = function (options) {
 	var url = options.url;
 	var frequency = options.frequency;
 	var length = options.length;
+	var requestTimeout = (options.timeout || 20) * 1000;
 
 	var agent = exports.createUserAgent({
 		method: 'GET',
@@ -60,7 +88,8 @@ exports.createRunner = function (options) {
 		headers: {
 			'Accept': '*/*',
 			'User-Agent': 'Roku/DVP-7.0 (047.00E09044A)'
-		}
+		},
+		timeout: requestTimeout
 	});
 
 	// Request frequency is given in requests per minute.
@@ -99,8 +128,7 @@ exports.main = function (args, done) {
 	var agent = runner.agent;
 
 	agent.on('error', function (err) {
-		process.stderr.write('\n');
-		console.error('Agent Error: %s', err.message || err);
+		console.error('\nAgent Error: %s', err.code || err.message || err);
 	});
 
 	agent.on('request', function () {
@@ -108,11 +136,14 @@ exports.main = function (args, done) {
 	});
 
 	agent.on('response', function (res) {
-		res.pending = (requestCount - data.length) - 1;
-		data.push(Object.freeze(res));
-		process.stderr.write(res.pending + '.');
+		var dataPoint = JSON.parse(JSON.stringify(res));
+		dataPoint.pending = (requestCount - data.length) - 1;
+		data.push(Object.freeze(dataPoint));
+		process.stderr.write(dataPoint.pending + '.');
 	});
 
+	// Rather than keeping track of how many requests we've sent before closing
+	// the script, we just listen to Node's "beforeExit" event.
 	process.on('beforeExit', function () {
 		process.stderr.write('\n');
 		done(null, data);
@@ -135,12 +166,16 @@ exports.printData = function (results) {
 		return sum + res.latency;
 	}, 0);
 
+	// Print out CSV formated data
 	console.log('');
-	console.log('pending,original,sorted');
-	sorted.forEach(function (item, i) {
-		console.log('%s,%s,%s', item.pending, original[i].latency, item.latency);
+	console.log('pending,original,status,sorted');
+	sorted.forEach(function (itemB, i) {
+		var itemA = original[i];
+		var status = itemA.status === 200 ? 'success' : 'fail';
+		console.log('%s,%s,%s,%s', itemA.pending, itemA.latency, status, itemB.latency);
 	});
 
+	// Test summary (printed to stderr to avoid polluting CSV data above)
 	console.error('requests: ', original.length);
 	console.error('min: ', sorted[0].latency);
 	console.error('max: ', sorted[sorted.length - 1].latency);

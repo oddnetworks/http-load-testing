@@ -4,7 +4,11 @@ The Agent
 ---------
 The load testing client (the agent) is run by the run-agent.js script like this:
 
-    node run-agent.js --url http://ec2-52.amazonaws.com:8080 --frequency 30 --length 60
+    node run-agent.js \
+      --url http://ec2-52.amazonaws.com:8080 \
+      --timeout 20 \
+      --frequency 30 \
+      --length 60
 
 which will repeatedly call the `http://ec2-52.amazonaws.com:8080` endpoint at 30 requests per minute for 60 seconds.
 
@@ -12,7 +16,11 @@ Also, you can run `node run-agent.js --help`.
 
 To get output in CSV format, run it like this:
 
-    node run-agent.js --url http://ec2-52.amazonaws.com:8080 --frequency 30 --length 60 > ~/Desktop/load-test-data.csv
+    node run-agent.js \
+      --url http://ec2-52.amazonaws.com:8080 \
+      --timeout 20 \
+      --frequency 30 \
+      --length 60 > ~/Desktop/load-test-data.csv
 
 You'll see some output on your terminal, but that is stderr, not stdout.
 
