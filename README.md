@@ -21,7 +21,6 @@ You'll see some output on your terminal, but that is stderr, not stdout.
 * __PORT__ HTTP port
 * __MIN__ int - The min latency for database requests in milliseconds
 * __MAX__ int - The max latency for database requests in milliseconds
-* __OUTLIER__ int - The odds of having an outlier; a really long request
 
 #### Applicaction Servers
 * __PORT__ HTTP port
